@@ -39,3 +39,40 @@ class User(AbstractUser):
             models.Index(fields=['email'], name='email_idx'),
         ]
 
+
+class Movie(models.Model):
+    """
+    Model representing movies from the TMDB API.
+    """
+
+    movie_id = models.IntegerField(primary_key=True)
+
+    title = models.CharField(max_length=255)
+
+    release_year = models.IntegerField()
+
+    overview = models.TextField(blank=True)  
+
+    poster_path = models.CharField(max_length=255, blank=True)
+
+    genres = models.JSONField(default=list)
+
+    average_rating = models.FloatField(default=0.0)
+
+    popularity = models.FloatField(default=0.0)
+
+    cached_at = models.DateTimeField(auto_now=True)
+
+    
+    def __str__(self):
+        """returns a string representation of the movie."""
+        return f"{self.title} ({self.release_year})"
+    
+    class Meta:
+        """Meta options for the movie model."""
+
+        ordering = ['-release_year']
+        indexes = [
+            models.Index(fields=['title']),
+            models.Index(fields=['release_year']),
+        ]
