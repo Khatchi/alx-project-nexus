@@ -137,3 +137,30 @@ class Watchlist(models.Model):
             models.Index(fields=['user']),
             models.Index(fields=['tmdb_id']),
         ]
+
+
+class TrendingMovie(models.Model):
+    """
+    Model representing trending movies.
+    """
+
+    tmdb_id = models.IntegerField(primary_key=True)
+
+    title = models.CharField(max_length=255)
+
+    popularity = models.FloatField()
+
+    cached_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        """returns a string representation of the trending movie."""
+        return f"Trending Movie: {self.title} (TMDB ID: {self.tmdb_id})"
+    
+    class Meta:
+        """Meta options for the TrendingMovie model."""
+
+        ordering = ['-popularity']
+
+        indexes = [
+            models.Index(fields=['popularity']),
+        ]
