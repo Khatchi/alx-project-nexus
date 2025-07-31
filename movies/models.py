@@ -76,3 +76,34 @@ class Movie(models.Model):
             models.Index(fields=['title']),
             models.Index(fields=['release_year']),
         ]
+
+
+class Rating(models.Model):
+    """
+    Model representing user ratings for movies.
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ratings')
+
+    tmdb_id = models.IntegerField()
+
+    rating = models.FloatField()
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        """returns a string representation of the rating."""
+        return f"Rating by {self.user.username} for TMDB ID {self.tmdb_id}: {self.rating}"
+
+    class Meta:
+        """Meta options for the Rating model."""
+
+        unique_together = ('user', 'tmdb_id')
+
+        ordering = ['-timestamp']
+
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['tmdb_id']),
+            models.Index(fields=['rating']),
+        ]
