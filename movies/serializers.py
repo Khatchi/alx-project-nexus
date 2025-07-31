@@ -25,4 +25,29 @@ class UserSerializer(serializers.ModelSerializer):
             'updated_at'
         ]
         read_only_fields = ['user_id', 'date_joined', 'created_at', 'updated_at']
+
+
+
+class MovieSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Movie model.
+    """
+
+    class Meta:
+        """Meta options for the MovieSerializer."""
+
+        model = Movie
+
+        fields = [
+            'movie_id',
+            'title', 
+            'release_year',
+            'overview',
+            'poster_path',
+            'genres',
+            'average_rating',
+            'popularity',
+            'cached_at'
+        ]
+        read_only_fields = ['cached_at']
         
