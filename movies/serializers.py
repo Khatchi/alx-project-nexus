@@ -70,3 +70,22 @@ class RatingSerializer(serializers.ModelSerializer):
             'timestamp'
         ]
         read_only_fields = ['id', 'timestamp']
+
+
+class WatchlistSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Watchlist model.
+    """
+
+    class Meta:
+        """Meta options for the WatchlistSerializer."""
+
+        model = Watchlist
+
+        fields = [
+            'id',
+            'user',
+            'tmdb_id',
+            'added_at'
+        ]
+        read_only_fields = ['id', 'added_at']
