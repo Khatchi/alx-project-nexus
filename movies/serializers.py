@@ -50,4 +50,23 @@ class MovieSerializer(serializers.ModelSerializer):
             'cached_at'
         ]
         read_only_fields = ['cached_at']
-        
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Rating model.
+    """
+
+    class Meta:
+        """Meta options for the RatingSerializer."""
+
+        model = Rating
+
+        fields = [
+            'id',
+            'user',
+            'tmdb_id',
+            'rating',
+            'timestamp'
+        ]
+        read_only_fields = ['id', 'timestamp']
