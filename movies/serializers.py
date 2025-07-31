@@ -89,3 +89,22 @@ class WatchlistSerializer(serializers.ModelSerializer):
             'added_at'
         ]
         read_only_fields = ['id', 'added_at']
+
+
+class TrendingMovieSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the TrendingMovie model.
+    """
+
+    class Meta:
+        """Meta options for the TrendingMovieSerializer."""
+
+        model = TrendingMovie
+        
+        fields = [
+            'tmdb_id',
+            'title',
+            'popularity',
+            'cached_at'
+        ]
+        read_only_fields = ['cached_at']
