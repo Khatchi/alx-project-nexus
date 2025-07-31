@@ -107,3 +107,33 @@ class Rating(models.Model):
             models.Index(fields=['tmdb_id']),
             models.Index(fields=['rating']),
         ]
+
+
+class Watchlist(models.Model):
+    """
+    Model representing a user's watchlist for movies.
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='watchlists')
+
+    tmdb_id = models.IntegerField()
+
+    added_at = models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self):
+        """returns a string representation of the watchlist entry."""
+        return f"Watchlist entry for {self.user.username} - TMDB ID {self.tmdb_id}"
+    
+
+    class Meta:
+        """Meta options for the Watchlist model."""
+
+        unique_together = ('user', 'tmdb_id')
+
+        ordering = ['-added_at']
+
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['tmdb_id']),
+        ]
