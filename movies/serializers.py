@@ -108,3 +108,27 @@ class TrendingMovieSerializer(serializers.ModelSerializer):
             'cached_at'
         ]
         read_only_fields = ['cached_at']
+
+
+class RecommendationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Recommendation model.
+    """
+
+    movie = MovieSerializer(source='tmdb_id', read_only=True)
+    
+    class Meta:
+        """Meta options for the RecommendationSerializer."""
+
+        model = Recommendation
+
+        fields = [
+            'id',
+            'user',
+            'tmdb_id',
+            'score',
+            'generated_at',
+            'movie'
+        ]
+
+        read_only_fields = ['generated_at', 'movie']
