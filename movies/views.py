@@ -3,10 +3,11 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Avg
 import requests
 import logging
-from movies.models import Movie, User
-from movies.serializers import MovieSerializer, UserSerializer
+from movies.models import Movie, Rating, User
+from movies.serializers import MovieSerializer, RatingSerializer, UserSerializer
 from movies.tmdb import TMDbAPI
 
 # Create your views here.
@@ -222,3 +223,28 @@ class MovieViewSet(viewsets.ReadOnlyModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """Allow deletion of cached movies."""
         return super().destroy(request, *args, **kwargs)
+
+
+
+class RatingViewSet(viewsets.ModelViewSet):
+    """Viewset for managing movie ratings.
+    - Allows users to create, retrieve, update, and delete ratings.
+    - Automatically calculates and updates the average rating for movies.
+    - Uses RatingSerializer to serialize rating data.
+    - Requires user authentication for all actions.
+    - Supports listing all ratings, but typically restricted to admin users.
+    - Uses ModelViewSet for CRUD operations on Rating model.
+    """
+
+    queryset = Rating.objects.all()
+    
+    serializer_class = RatingSerializer
+  
+
+    def perform_create(self, serializer):
+        """Override to set the user automatically when creating a rating."""
+        serializer.save(user=self.request.user)
+        # Update average rating
+        tmdb_id = serializer.validated_data['tmdb_id']
+        avg_rating = Rating.objects.filter(tmdb_id=tmdb_id).aggregate(Avg('rating'))['rating__avg'] or 0.0
+        Movie.objects.filter(tmdb_id=tmdb_id).update(average_rating=avg_rating)
