@@ -166,3 +166,9 @@ SWAGGER_SETTINGS = {
 REDOC_SETTINGS = {
     'LAZY_RENDERING': False,
 }
+
+# TMDB API settings
+TMDB_API_KEY = env('TMDB_API_KEY')
+
+# Caching settings
+

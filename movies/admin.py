@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User
+from .models import Movie, User
 
 # Register your models here.
 
@@ -13,3 +13,4 @@ class CustomUserAdmin(UserAdmin):
     list_display = ('user_id', 'username', 'email', 'phone_number', 'created_at')
 
 admin.site.register(User, CustomUserAdmin)
+admin.site.register(Movie)

@@ -40,7 +40,7 @@ class MovieSerializer(serializers.ModelSerializer):
         model = Movie
 
         fields = [
-            'movie_id',
+            'tmdb_id',
             'title', 
             'release_year',
             'overview',

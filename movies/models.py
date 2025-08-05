@@ -45,7 +45,7 @@ class Movie(models.Model):
     Model representing movies from the TMDB API.
     """
 
-    movie_id = models.IntegerField(primary_key=True)
+    tmdb_id = models.IntegerField(primary_key=True)
 
     title = models.CharField(max_length=255)
 
