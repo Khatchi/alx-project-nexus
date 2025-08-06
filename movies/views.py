@@ -6,8 +6,8 @@ from datetime import timedelta
 from django.db.models import Avg
 import requests
 import logging
-from movies.models import Movie, Rating, User
-from movies.serializers import MovieSerializer, RatingSerializer, UserSerializer
+from movies.models import Movie, Rating, User, Watchlist
+from movies.serializers import MovieSerializer, RatingSerializer, UserSerializer, WatchlistSerializer
 from movies.tmdb import TMDbAPI
 
 # Create your views here.
@@ -248,3 +248,20 @@ class RatingViewSet(viewsets.ModelViewSet):
         tmdb_id = serializer.validated_data['tmdb_id']
         avg_rating = Rating.objects.filter(tmdb_id=tmdb_id).aggregate(Avg('rating'))['rating__avg'] or 0.0
         Movie.objects.filter(tmdb_id=tmdb_id).update(average_rating=avg_rating)
+
+
+class WatchlistViewSet(viewsets.ModelViewSet):
+    """Viewset for managing user watchlists.
+    - Allows users to add and remove movies from their watchlist.
+    - Requires user authentication for all actions.
+    - Uses WatchlistSerializer to serialize watchlist data.
+    - Supports listing all watchlist items for the authenticated user.
+    - Uses ModelViewSet for CRUD operations on Watchlist model.
+    """
+    
+    queryset = Watchlist.objects.all()
+    serializer_class = WatchlistSerializer
+
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
