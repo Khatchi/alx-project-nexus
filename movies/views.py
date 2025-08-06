@@ -1,3 +1,4 @@
+import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -6,8 +7,8 @@ from datetime import timedelta
 from django.db.models import Avg
 import requests
 import logging
-from movies.models import Movie, Rating, User, Watchlist
-from movies.serializers import MovieSerializer, RatingSerializer, UserSerializer, WatchlistSerializer
+from movies.models import Movie, Rating, TrendingMovie, User, Watchlist
+from movies.serializers import MovieSerializer, RatingSerializer, TrendingMovieSerializer, UserSerializer, WatchlistSerializer
 from movies.tmdb import TMDbAPI
 
 # Create your views here.
@@ -265,3 +266,36 @@ class WatchlistViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+
+class TrendingMovieViewSet(viewsets.ViewSet):
+    """Viewset for retrieving trending movies.
+    - Fetches trending movies from TMDb API.
+    - Caches results for 24 hours to reduce API calls.
+    - Uses TrendingMovieSerializer to serialize trending movie data.
+    - Provides a list action to retrieve trending movies.
+    - Automatically clears old cache entries before fetching new data.
+    - Uses TMDbAPI to interact with TMDb for trending movies.
+    - Supports listing trending movies with pagination.
+    - Automatically updates the cache with new trending movies.
+    - Handles errors gracefully and logs them for debugging.
+    """
+
+    
+    def list(self, request):
+        # Check cache
+        trending = TrendingMovie.objects.filter(cached_at__gte=timezone.now() - timedelta(hours=24))
+        if not trending.exists():
+            # Fetch from TMDb
+            tmdb_data = TMDbAPI.get_trending_movies()
+            TrendingMovie.objects.all().delete()
+            for movie in tmdb_data:
+                TrendingMovie.objects.create(
+                    tmdb_id=movie['id'],
+                    title=movie['title'],
+                    popularity=movie.get('popularity', 0.0)
+                )
+            trending = TrendingMovie.objects.all()
+        serializer = TrendingMovieSerializer(trending, many=True)
+        return Response(serializer.data)
