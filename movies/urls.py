@@ -9,6 +9,7 @@ router.register(r'movies', MovieViewSet, basename='movie')
 router.register(r'ratings', RatingViewSet, basename='rating')
 router.register(r'watchlist', WatchlistViewSet, basename='watchlist')
 router.register(r'trending', TrendingMovieViewSet, basename='trending')
+router.register(r'recommendations', TrendingMovieViewSet, basename='recommendation')
 
 urlpatterns = [
     path('', include(router.urls)),

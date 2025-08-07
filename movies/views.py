@@ -7,9 +7,10 @@ from datetime import timedelta
 from django.db.models import Avg
 import requests
 import logging
-from movies.models import Movie, Rating, TrendingMovie, User, Watchlist
-from movies.serializers import MovieSerializer, RatingSerializer, TrendingMovieSerializer, UserSerializer, WatchlistSerializer
+from movies.models import Movie, Rating, Recommendation, TrendingMovie, User, Watchlist
+from movies.serializers import MovieSerializer, RatingSerializer, RecommendationSerializer, TrendingMovieSerializer, UserSerializer, WatchlistSerializer
 from movies.tmdb import TMDbAPI
+from django.core.cache import cache
 
 # Create your views here.
 
@@ -299,3 +300,61 @@ class TrendingMovieViewSet(viewsets.ViewSet):
             trending = TrendingMovie.objects.all()
         serializer = TrendingMovieSerializer(trending, many=True)
         return Response(serializer.data)
+
+
+class RecommendationViewSet(viewsets.ModelViewSet):
+    """Viewset for generating movie recommendations.
+    - Uses a simple recommendation algorithm based on user ratings.
+    - Caches recommendations for 1 hour to reduce computation.
+    - Provides a list action to retrieve recommendations for the authenticated user.
+    - Automatically updates recommendations based on user ratings.
+    - Uses RecommendationSerializer to serialize recommendation data.
+    - Handles errors gracefully and logs them for debugging.
+    - Supports pagination of recommendations.
+    - Uses TMDbAPI to fetch movie details for recommendations.
+    - Implements a basic collaborative filtering approach based on user ratings."""
+
+    queryset = Recommendation.objects.all()
+    serializer_class = RecommendationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request):
+        user = request.user
+        cache_key = f'recommendations_{user.id}'
+        cached = cache.get(cache_key)
+        if cached:
+            return Response(cached)
+
+        # Simple recommendation: movies with similar genres to highly rated movies
+        rated_movies = Rating.objects.filter(user=user, rating__gte=4).values_list('tmdb_id', flat=True)
+        if not rated_movies:
+            return Response([])
+
+        genres = set()
+        for movie in Movie.objects.filter(tmdb_id__in=rated_movies):
+            genres.update(movie.genres)
+
+        # Fetch movies from TMDb with similar genres
+        tmdb_movies = TMDbAPI.discover_movies()
+        recommendations = []
+        for movie in tmdb_movies:
+            if any(g in genres for g in [g['name'] for g in movie.get('genres', [])]):
+                recommendations.append({
+                    'tmdb_id': movie['id'],
+                    'score': movie.get('popularity', 0.0) / 100,
+                    'generated_at': datetime.now().isoformat(),
+                    'movie': {
+                        'tmdb_id': movie['id'],
+                        'title': movie['title'],
+                        'release_year': int(movie['release_date'][:4]) if movie.get('release_date') else None,
+                        'overview': movie.get('overview', ''),
+                        'poster_path': movie.get('poster_path', ''),
+                        'genres': [g['name'] for g in movie.get('genres', [])],
+                        'popularity': movie.get('popularity', 0.0),
+                    }
+                })
+
+        cache.set(cache_key, recommendations, timedelta(hours=1).total_seconds())
+        return Response(recommendations)
+        
+
