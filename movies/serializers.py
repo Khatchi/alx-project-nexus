@@ -6,6 +6,7 @@ class UserSerializer(serializers.ModelSerializer):
     Serializer for the User model.
     """
 
+    password = serializers.CharField(write_only=True, min_length=8)
     class Meta:
         """Meta options for the UserSerializer."""
 
@@ -25,7 +26,32 @@ class UserSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
+
         read_only_fields = ['user_id', 'date_joined', 'created_at', 'updated_at']
+
+        extra_kwargs = {
+            'password': {'write_only': True} 
+        }
+
+    # methods to handle password hashing
+
+    def create(self, validated_data):
+        """Create user with hashed password"""
+        return User.objects.create_user(**validated_data)
+    
+    def update(self, instance, validated_data):
+        """Update user and hash password if provided"""
+        password = validated_data.pop('password', None)
+        
+        # Update other fields
+        instance = super().update(instance, validated_data)
+        
+        # Hash and set password if provided
+        if password:
+            instance.set_password(password)
+            instance.save()
+        
+        return instance
 
 
 

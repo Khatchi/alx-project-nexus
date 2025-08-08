@@ -11,6 +11,7 @@ from movies.models import Movie, Rating, Recommendation, TrendingMovie, User, Wa
 from movies.serializers import MovieSerializer, RatingSerializer, RecommendationSerializer, TrendingMovieSerializer, UserSerializer, WatchlistSerializer
 from movies.tmdb import TMDbAPI
 from django.core.cache import cache
+from rest_framework.exceptions import PermissionDenied
 
 # Create your views here.
 
@@ -28,14 +29,49 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = User.objects.all()
     
+    # def get_queryset(self):
+    #     """"""
+    #     return User.objects.filter(user_id=self.request.user.user_id)
+    
+    # def get_object(self):
+    #     """"Return the user object for the current request."""
+    #     return self.request.user
+
     def get_queryset(self):
-        """"""
+        """
+        Restrict regular users to their own profile; admins can see all users.
+        """
+        if self.request.user.is_staff:
+            return User.objects.all()
         return User.objects.filter(user_id=self.request.user.user_id)
-    
-    def get_object(self):
-        """"Return the user object for the current request."""
-        return self.request.user
+
+    def perform_create(self, serializer):
+        """
+        Ensure only admins can create users.
+        """
+        if not self.request.user.is_staff:
+            raise PermissionDenied("Only admins can create users.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        """
+        Allow users to update their own profile; admins can update any user.
+        """
+        if not self.request.user.is_staff and \
+            str(self.request.user.user_id) != str(self.kwargs.get('pk')):
+            raise PermissionDenied("You can only update your own profile.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """
+        Ensure only admins can delete users.
+        """
+        if not self.request.user.is_staff:
+            raise PermissionDenied("Only admins can delete users.")
+        instance.delete()
 
 
 # Set up logging
@@ -52,7 +88,7 @@ class MovieViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
     lookup_field = 'tmdb_id'
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         """
@@ -241,6 +277,8 @@ class RatingViewSet(viewsets.ModelViewSet):
     queryset = Rating.objects.all()
     
     serializer_class = RatingSerializer
+
+    permission_classes = [permissions.IsAuthenticated]
   
 
     def perform_create(self, serializer):
@@ -282,6 +320,8 @@ class TrendingMovieViewSet(viewsets.ViewSet):
     - Automatically updates the cache with new trending movies.
     - Handles errors gracefully and logs them for debugging.
     """
+
+    permission_classes = [permissions.IsAuthenticated]
 
     
     def list(self, request):

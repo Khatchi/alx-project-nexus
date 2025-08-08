@@ -24,6 +24,10 @@ class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
+    @property
+    def id(self):
+        return self.user_id
+
 
     def __str__(self):
         """returns a string representation of the user."""
