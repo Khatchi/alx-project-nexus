@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from movies.models import User, Movie, Rating, Watchlist, TrendingMovie, Recommendation
+from movies.models import User, Movie, Rating, Watchlist, Recommendation
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -118,16 +118,16 @@ class WatchlistSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'added_at']
 
 
-class TrendingMovieSerializer(serializers.ModelSerializer):
+class RecommendationSerializer(serializers.ModelSerializer):
     """
-    Serializer for the TrendingMovie model.
+    Serializer for the Recommendation model.
     """
 
     class Meta:
-        """Meta options for the TrendingMovieSerializer."""
+        """Meta options for the RecommendationSerializer."""
 
-        model = TrendingMovie
-        
+        model = Recommendation
+
         fields = [
             'tmdb_id',
             'title',
@@ -135,27 +135,3 @@ class TrendingMovieSerializer(serializers.ModelSerializer):
             'cached_at'
         ]
         read_only_fields = ['cached_at']
-
-
-class RecommendationSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Recommendation model.
-    """
-
-    movie = MovieSerializer(source='tmdb_id', read_only=True)
-    
-    class Meta:
-        """Meta options for the RecommendationSerializer."""
-
-        model = Recommendation
-
-        fields = [
-            'id',
-            'user',
-            'tmdb_id',
-            'score',
-            'generated_at',
-            'movie'
-        ]
-
-        read_only_fields = ['generated_at', 'movie']

@@ -1,4 +1,3 @@
-import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -7,14 +6,12 @@ from datetime import timedelta
 from django.db.models import Avg
 import requests
 import logging
-from movies.models import Movie, Rating, Recommendation, TrendingMovie, User, Watchlist
-from movies.serializers import MovieSerializer, RatingSerializer, RecommendationSerializer, TrendingMovieSerializer, UserSerializer, WatchlistSerializer
+from movies.models import Movie, Rating, Recommendation, User, Watchlist
+from movies.serializers import MovieSerializer, RatingSerializer, RecommendationSerializer,  UserSerializer, WatchlistSerializer
 from movies.tmdb import TMDbAPI
-from django.core.cache import cache
 from rest_framework.exceptions import PermissionDenied
 from movies.permissions import IsAuthenticatedOrReadOnlyForMovies, MovieAccessPermission
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
+
 
 # Create your views here.
 
@@ -297,12 +294,12 @@ class WatchlistViewSet(viewsets.ModelViewSet):
 
 
 
-class TrendingMovieViewSet(viewsets.ViewSet):
-    """Viewset for retrieving trending movies.
-    - Fetches trending movies from TMDb API.
+class RecommendationViewSet(viewsets.ViewSet):
+    """Viewset for retrieving movie recommendations.
+    - Fetches movie recommendations from TMDb API.
     - Caches results for 24 hours to reduce API calls.
-    - Uses TrendingMovieSerializer to serialize trending movie data.
-    - Provides a list action to retrieve trending movies.
+    - Uses RecommendationSerializer to serialize recommendation data.
+    - Provides a list action to retrieve recommendations.
     - Automatically clears old cache entries before fetching new data.
     - Uses TMDbAPI to interact with TMDb for trending movies.
     - Supports listing trending movies with pagination.
@@ -314,73 +311,17 @@ class TrendingMovieViewSet(viewsets.ViewSet):
 
     def list(self, request):
         # Check cache
-        trending = TrendingMovie.objects.filter(cached_at__gte=timezone.now() - timedelta(hours=24))
-        if not trending.exists():
+        recommend = Recommendation.objects.filter(cached_at__gte=timezone.now() - timedelta(hours=24))
+        if not recommend.exists():
             # Fetch from TMDb
             tmdb_data = TMDbAPI.get_trending_movies()
-            TrendingMovie.objects.all().delete()
+            Recommendation.objects.all().delete()
             for movie in tmdb_data:
-                TrendingMovie.objects.create(
+                Recommendation.objects.create(
                     tmdb_id=movie['id'],
                     title=movie['title'],
                     popularity=movie.get('popularity', 0.0)
                 )
-            trending = TrendingMovie.objects.all()
-        serializer = TrendingMovieSerializer(trending, many=True)
+            recommend = Recommendation.objects.all()
+        serializer = RecommendationSerializer(recommend, many=True)
         return Response(serializer.data)
-
-
-class RecommendationViewSet(viewsets.ViewSet):
-    """Viewset for generating movie recommendations.
-    - Uses a simple recommendation algorithm based on user ratings.
-    - Caches recommendations for 1 hour to reduce computation.
-    - Provides a list action to retrieve recommendations for the authenticated user.
-    - Automatically updates recommendations based on user ratings.
-    - Uses RecommendationSerializer to serialize recommendation data.
-    - Handles errors gracefully and logs them for debugging.
-    - Supports pagination of recommendations.
-    - Uses TMDbAPI to fetch movie details for recommendations.
-    - Implements a basic collaborative filtering approach based on user ratings."""
-
-    queryset = Recommendation.objects.all()
-    serializer_class = RecommendationSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def list(self, request):
-        user = request.user
-        cache_key = f'recommendations_{user.id}'
-        cached = cache.get(cache_key)
-        if cached:
-            return Response(cached)
-
-        # Simple recommendation: movies with similar genres to highly rated movies
-        rated_movies = Rating.objects.filter(user=user, rating__gte=4).values_list('tmdb_id', flat=True)
-        if not rated_movies:
-            return Response([])
-
-        genres = set()
-        for movie in Movie.objects.filter(tmdb_id__in=rated_movies):
-            genres.update(movie.genres)
-
-        # Fetch movies from TMDb with similar genres
-        tmdb_movies = TMDbAPI.discover_movies()
-        recommendations = []
-        for movie in tmdb_movies:
-            if any(g in genres for g in [g['name'] for g in movie.get('genres', [])]):
-                recommendations.append({
-                    'tmdb_id': movie['id'],
-                    'score': movie.get('popularity', 0.0) / 100,
-                    'generated_at': datetime.now().isoformat(),
-                    'movie': {
-                        'tmdb_id': movie['id'],
-                        'title': movie['title'],
-                        'release_year': int(movie['release_date'][:4]) if movie.get('release_date') else None,
-                        'overview': movie.get('overview', ''),
-                        'poster_path': movie.get('poster_path', ''),
-                        'genres': [g['name'] for g in movie.get('genres', [])],
-                        'popularity': movie.get('popularity', 0.0),
-                    }
-                })
-
-        cache.set(cache_key, recommendations, timedelta(hours=1).total_seconds())
-        return Response(recommendations)

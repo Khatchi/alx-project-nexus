@@ -143,9 +143,9 @@ class Watchlist(models.Model):
         ]
 
 
-class TrendingMovie(models.Model):
+class Recommendation(models.Model):
     """
-    Model representing trending movies.
+    Model representing recommended movies for users.
     """
 
     tmdb_id = models.IntegerField(primary_key=True)
@@ -167,34 +167,4 @@ class TrendingMovie(models.Model):
 
         indexes = [
             models.Index(fields=['popularity']),
-        ]
-
-
-class Recommendation(models.Model):
-    """
-    Model representing movie recommendations for users.
-    """
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recommendations')
-
-    tmdb_id = models.IntegerField()
-
-    score = models.FloatField()
-
-    generated_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        """returns a string representation of the recommendation."""
-        return f"Recommendation for {self.user.username} - TMDB ID {self.tmdb_id}: Score {self.score}"
-    
-    class Meta:
-        """Meta options for the Recommendation model."""
-
-        unique_together = ('user', 'tmdb_id')
-
-        ordering = ['-score']
-
-        indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['tmdb_id']),
         ]
