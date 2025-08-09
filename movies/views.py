@@ -12,6 +12,9 @@ from movies.serializers import MovieSerializer, RatingSerializer, Recommendation
 from movies.tmdb import TMDbAPI
 from django.core.cache import cache
 from rest_framework.exceptions import PermissionDenied
+from movies.permissions import IsAuthenticatedOrReadOnlyForMovies, MovieAccessPermission
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 # Create your views here.
 
@@ -32,13 +35,6 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     queryset = User.objects.all()
     
-    # def get_queryset(self):
-    #     """"""
-    #     return User.objects.filter(user_id=self.request.user.user_id)
-    
-    # def get_object(self):
-    #     """"Return the user object for the current request."""
-    #     return self.request.user
 
     def get_queryset(self):
         """
@@ -88,7 +84,10 @@ class MovieViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
     lookup_field = 'tmdb_id'
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        MovieAccessPermission,
+        ]
 
     def get_object(self):
         """
@@ -244,20 +243,7 @@ class MovieViewSet(viewsets.ReadOnlyModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    def create(self, request, *args, **kwargs):
-        """Disable direct movie creation."""
-        return Response(
-            {'error': 'Direct movie creation not allowed. Use TMDb ID to fetch movies.'}, 
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
-
-    def update(self, request, *args, **kwargs):
-        """Disable movie updates."""
-        return Response(
-            {'error': 'Movie updates not allowed. Data is fetched from TMDb.'}, 
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
-
+   
     def destroy(self, request, *args, **kwargs):
         """Allow deletion of cached movies."""
         return super().destroy(request, *args, **kwargs)
@@ -301,9 +287,12 @@ class WatchlistViewSet(viewsets.ModelViewSet):
     
     queryset = Watchlist.objects.all()
     serializer_class = WatchlistSerializer
-
+    permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
+        """
+        Save the user as the owner of the watchlist item.
+        """
         serializer.save(user=self.request.user)
 
 
@@ -321,9 +310,8 @@ class TrendingMovieViewSet(viewsets.ViewSet):
     - Handles errors gracefully and logs them for debugging.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrReadOnlyForMovies]
 
-    
     def list(self, request):
         # Check cache
         trending = TrendingMovie.objects.filter(cached_at__gte=timezone.now() - timedelta(hours=24))
@@ -342,7 +330,7 @@ class TrendingMovieViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
 
-class RecommendationViewSet(viewsets.ModelViewSet):
+class RecommendationViewSet(viewsets.ViewSet):
     """Viewset for generating movie recommendations.
     - Uses a simple recommendation algorithm based on user ratings.
     - Caches recommendations for 1 hour to reduce computation.
@@ -396,5 +384,3 @@ class RecommendationViewSet(viewsets.ModelViewSet):
 
         cache.set(cache_key, recommendations, timedelta(hours=1).total_seconds())
         return Response(recommendations)
-        
-
